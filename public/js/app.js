@@ -37,11 +37,11 @@ const loadData = async () => {
       apiCall('/analytics/storage')
     ]);
 
-    folders = foldersRes.data;
-    files = filesRes.data;
+    folders = foldersRes?.data || [];
+    files = filesRes?.data || [];
 
     // Update analytics storage widget data
-    window.storageStats = analyticsRes.data;
+    window.storageStats = analyticsRes?.data || { totalSize: 0 };
   } catch (err) {
     console.error('Failed to fetch user data', err);
   }
@@ -49,6 +49,8 @@ const loadData = async () => {
 
 const render = () => {
   const appContainer = document.getElementById('app');
+  if (!appContainer) return;
+
   appContainer.innerHTML = `
     ${renderSidebar(currentView)}
     <main class="main-content">
@@ -62,19 +64,24 @@ const render = () => {
     </main>
   `;
 
-  // Attach Event Listeners
-  document.getElementById('sidebar-new-btn').onclick = () => {
-    renderUploadModal(null, async () => {
-      await loadData();
-      render();
-    });
-  };
+  // Attach Event Listeners safely
+  const newBtn = document.getElementById('sidebar-new-btn');
+  if (newBtn) {
+    newBtn.onclick = () => {
+      renderUploadModal(null, async () => {
+        await loadData();
+        render();
+      });
+    };
+  }
 
   document.querySelectorAll('.file-card').forEach(card => {
     card.onclick = () => {
       const fileId = card.getAttribute('data-id');
       const fileName = card.getAttribute('data-name');
-      renderPreviewModal(fileId, fileName);
+      if (fileId && fileName) {
+        renderPreviewModal(fileId, fileName);
+      }
     };
   });
 
