@@ -28,7 +28,8 @@ export const renderUploadModal = (onClose, onUploadSuccess) => {
 
     try {
       const { apiCall } = await import('../api.js');
-      await apiCall('/files/upload', 'POST', formData, true);
+      // Removed the extra 'true' parameter so apiCall detects FormData automatically
+      await apiCall('/files/upload', 'POST', formData);
       overlay.remove();
       onUploadSuccess();
     } catch (err) {
