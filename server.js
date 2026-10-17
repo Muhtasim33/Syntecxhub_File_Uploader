@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const passport = require('passport');
 const { connectDB } = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -16,6 +17,12 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors());
+
+// Initialize Passport middleware
+app.use(passport.initialize());
+
+// Register the JWT strategy from your config file
+require('./config/passport')(passport);
 
 // Serve static frontend files from the 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
