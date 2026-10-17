@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const { connectDB } = require('./config/db');
@@ -16,15 +17,18 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Mount Routes
+// Serve static frontend files from the 'public' folder
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Mount API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/folders', require('./routes/folderRoutes'));
 app.use('/api/files', require('./routes/fileRoutes'));
 app.use('/api/share', require('./routes/shareRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
-// Base route
-app.get('/', (req, res) => {
+// Optional: API status check endpoint
+app.get('/api/status', (req, res) => {
   res.send('Cloud Storage API is running...');
 });
 
