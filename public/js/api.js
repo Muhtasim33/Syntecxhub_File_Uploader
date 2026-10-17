@@ -1,6 +1,6 @@
 const API_BASE = '/api';
 
-export const apiCall = async (endpoint, method = 'GET', data = null, isFormData = false) => {
+export const apiCall = async (endpoint, method = 'GET', data = null) => {
   const token = localStorage.getItem('token');
   const headers = {};
 
@@ -14,13 +14,17 @@ export const apiCall = async (endpoint, method = 'GET', data = null, isFormData 
   };
 
   if (data) {
-    if (isFormData) {
-      options.body = data; // FormData sets its own Content-Type boundary
+    // Automatically detect if the payload is FormData
+    if (data instanceof FormData) {
+      options.body = data; // Lets the browser set multipart/form-data boundary automatically
     } else {
       headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(data);
     }
   }
+
+  // Debug log to verify outgoing request headers in browser console
+  console.log(`[API Call] ${method} ${endpoint}`, { headers, hasToken: !!token });
 
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, options);
