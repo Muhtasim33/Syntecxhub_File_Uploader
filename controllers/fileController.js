@@ -1,4 +1,4 @@
-const FileMeta = require('../models/fileMetaModel'); // Apnar model name onujayi file name thakbe
+const FileMeta = require('../models/FileMeta'); 
 const { getGfsBucket } = require('../config/db');
 const { Readable } = require('stream');
 
@@ -42,7 +42,7 @@ const uploadFile = async (req, res, next) => {
         originalName: originalname,
         filename: filename,
         size: size,
-        mimetype: mimetype,
+        mimeType: mimetype, // Fixed: changed 'mimetype' to 'mimeType'
         gridfsId: uploadStream.id,
         ownerId: req.user._id,
         folderId: folderId || null
@@ -98,7 +98,7 @@ const downloadFile = async (req, res, next) => {
     }
 
     const gfsBucket = getGfsBucket();
-    res.set('Content-Type', fileMeta.mimetype);
+    res.set('Content-Type', fileMeta.mimeType); // Fixed: changed 'mimetype' to 'mimeType'
     res.set('Content-Disposition', `attachment; filename="${fileMeta.originalName}"`);
 
     const downloadStream = gfsBucket.openDownloadStream(fileMeta.gridfsId);

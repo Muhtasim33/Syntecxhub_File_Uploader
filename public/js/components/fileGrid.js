@@ -16,9 +16,9 @@ export const renderFileGrid = (folders, files) => {
       <div class="grid-container" id="files-grid">
         ${files.length === 0 ? '<p style="color: #5f6368; font-size: 14px;">No files uploaded yet.</p>' : 
           files.map(file => `
-            <div class="file-card" data-id="${file._id}" data-name="${file.filename}" data-mimetype="${file.mimeType}">
+            <div class="file-card" data-id="${file._id}" data-name="${file.originalName}" data-mimetype="${file.mimeType}">
               <span class="material-icons" style="color: #1a73e8;">insert_drive_file</span>
-              <span>${file.filename}</span>
+              <span>${file.originalName}</span>
             </div>
           `).join('')}
       </div>
