@@ -1,4 +1,4 @@
-const FileMeta = require('../models/FileMeta');
+const FileMeta = require('../models/fileMetaModel'); // Apnar model name onujayi file name thakbe
 const { getGfsBucket } = require('../config/db');
 const { Readable } = require('stream');
 
@@ -25,7 +25,7 @@ const uploadFile = async (req, res, next) => {
     const uploadStream = gfsBucket.openUploadStream(filename, {
       contentType: mimetype,
       metadata: {
-        userId: req.user._id,
+        ownerId: req.user._id,
         originalName: originalname
       }
     });
@@ -37,13 +37,14 @@ const uploadFile = async (req, res, next) => {
     });
 
     uploadStream.on('finish', async () => {
-      // Save metadata in MongoDB
+      // Save metadata in MongoDB matching the schema fields
       const fileMeta = await FileMeta.create({
-        filename: originalname,
-        fileSize: size,
-        mimeType: mimetype,
-        gridFsFileId: uploadStream.id,
-        user: req.user._id,
+        originalName: originalname,
+        filename: filename,
+        size: size,
+        mimetype: mimetype,
+        gridfsId: uploadStream.id,
+        ownerId: req.user._id,
         folderId: folderId || null
       });
 
@@ -64,7 +65,7 @@ const getFiles = async (req, res, next) => {
   try {
     const { folderId } = req.query;
     const query = {
-      user: req.user._id,
+      ownerId: req.user._id,
       isDeleted: false,
       folderId: folderId ? folderId : null
     };
@@ -88,7 +89,7 @@ const downloadFile = async (req, res, next) => {
   try {
     const fileMeta = await FileMeta.findOne({
       _id: req.params.id,
-      user: req.user._id
+      ownerId: req.user._id
     });
 
     if (!fileMeta) {
@@ -97,10 +98,10 @@ const downloadFile = async (req, res, next) => {
     }
 
     const gfsBucket = getGfsBucket();
-    res.set('Content-Type', fileMeta.mimeType);
-    res.set('Content-Disposition', `attachment; filename="${fileMeta.filename}"`);
+    res.set('Content-Type', fileMeta.mimetype);
+    res.set('Content-Disposition', `attachment; filename="${fileMeta.originalName}"`);
 
-    const downloadStream = gfsBucket.openDownloadStream(fileMeta.gridFsFileId);
+    const downloadStream = gfsBucket.openDownloadStream(fileMeta.gridfsId);
     downloadStream.on('error', () => {
       res.status(404);
       next(new Error('File stream not found in storage'));
@@ -119,7 +120,7 @@ const deleteFile = async (req, res, next) => {
   try {
     const fileMeta = await FileMeta.findOne({
       _id: req.params.id,
-      user: req.user._id
+      ownerId: req.user._id
     });
 
     if (!fileMeta) {
