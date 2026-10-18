@@ -1,6 +1,5 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 
 // Generate JWT token helper
 const generateToken = (id) => {
@@ -14,7 +13,7 @@ const generateToken = (id) => {
 // @access  Public
 const registerUser = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
+    const { name, email, password } = req.body;
 
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -23,7 +22,7 @@ const registerUser = async (req, res, next) => {
     }
 
     const user = await User.create({
-      username,
+      name,
       email,
       password
     });
@@ -33,8 +32,10 @@ const registerUser = async (req, res, next) => {
         success: true,
         data: {
           _id: user._id,
-          username: user.username,
+          name: user.name,
           email: user.email,
+          storageUsed: user.storageUsed,
+          storageLimit: user.storageLimit,
           token: generateToken(user._id)
         }
       });
@@ -54,15 +55,18 @@ const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    // Explicitly select password since schema has select: false
+    const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
       res.json({
         success: true,
         data: {
           _id: user._id,
-          username: user.username,
+          name: user.name,
           email: user.email,
+          storageUsed: user.storageUsed,
+          storageLimit: user.storageLimit,
           token: generateToken(user._id)
         }
       });
