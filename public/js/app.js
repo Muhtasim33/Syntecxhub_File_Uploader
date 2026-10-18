@@ -1,4 +1,5 @@
 import { apiCall } from './api.js';
+import { initAuth } from './auth.js';
 import { renderSidebar } from './components/sidebar.js';
 import { renderFileGrid } from './components/fileGrid.js';
 import { renderUploadModal } from './components/uploadModal.js';
@@ -7,27 +8,6 @@ import { renderPreviewModal } from './components/previewModal.js';
 let currentView = 'drive';
 let folders = [];
 let files = [];
-
-const initApp = async () => {
-  // Simple check or temporary login simulation if no token exists
-  if (!localStorage.getItem('token')) {
-    try {
-      const res = await apiCall('/auth/login', 'POST', { email: 'demo@drive.com', password: 'password123' });
-      localStorage.setItem('token', res.token);
-    } catch {
-      try {
-        await apiCall('/auth/register', 'POST', { name: 'Demo User', email: 'demo@drive.com', password: 'password123' });
-        const loginRes = await apiCall('/auth/login', 'POST', { email: 'demo@drive.com', password: 'password123' });
-        localStorage.setItem('token', loginRes.token);
-      } catch (e) {
-        console.error('Auth setup failed', e);
-      }
-    }
-  }
-
-  await loadData();
-  render();
-};
 
 const loadData = async () => {
   try {
@@ -98,4 +78,13 @@ const render = () => {
   }
 };
 
-document.addEventListener('DOMContentLoaded', initApp);
+// Function called after successful authentication
+const startApp = async () => {
+  await loadData();
+  render();
+};
+
+// Initialize app with authentication check
+document.addEventListener('DOMContentLoaded', () => {
+  initAuth(startApp);
+});
