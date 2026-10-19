@@ -113,7 +113,6 @@ export const renderFileGrid = (folders, files, view, options = {}) => {
         <span aria-hidden="true">›</span>
         <button type="button" data-folder-depth="${index + 1}">${escapeHtml(folder.name)}</button>
       `).join('')}
-      ${isDrive ? '<button type="button" class="create-folder-btn" id="create-folder-btn">+ New folder</button>' : ''}
     </div>` : '';
 
   return `
@@ -123,7 +122,12 @@ export const renderFileGrid = (folders, files, view, options = {}) => {
         <div>
           <h1>${viewNames[view] || 'My Drive'}</h1>
         </div>
-        ${isDrive ? '<button class="btn-primary new-folder-mobile" id="create-folder-btn-mobile" type="button">New folder</button>' : ''}
+        ${isDrive ? `
+          <div class="drive-heading-actions">
+            <button class="btn-secondary" id="create-folder-btn" type="button">New folder</button>
+            <button class="btn-primary" id="upload-current-folder-btn" type="button">Upload files</button>
+          </div>
+        ` : ''}
       </div>
       ${foldersMarkup}
       ${filesMarkup}

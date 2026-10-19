@@ -581,6 +581,17 @@ body {
   margin: 3px 0 28px;
 }
 
+.drive-heading-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.drive-heading-actions button {
+  min-height: 40px;
+}
+
 .view-heading h1 {
   color: #202a3b;
   font-size: 25px;
@@ -809,10 +820,6 @@ body {
   color: var(--primary-color);
 }
 
-.new-folder-mobile {
-  display: none;
-}
-
 @media (max-width: 850px) {
   .sidebar {
     width: 220px;
@@ -914,12 +921,13 @@ body {
     font-size: 13px;
   }
 
-  .new-folder-mobile {
-    display: block;
+  .drive-heading-actions {
+    gap: 6px;
   }
 
-  .drive-breadcrumb .create-folder-btn {
-    display: none;
+  .drive-heading-actions button {
+    padding: 8px 10px;
+    font-size: 12px;
   }
 
   .grid-container {

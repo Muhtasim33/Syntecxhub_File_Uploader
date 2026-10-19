@@ -173,8 +173,8 @@ const render = () => {
     }
   );
   document.getElementById('sidebar-new-btn').onclick = upload;
+  document.getElementById('upload-current-folder-btn')?.addEventListener('click', upload);
   document.getElementById('create-folder-btn')?.addEventListener('click', openCreateFolder);
-  document.getElementById('create-folder-btn-mobile')?.addEventListener('click', openCreateFolder);
 
   document.getElementById('logout-btn').onclick = () => {
     localStorage.removeItem('token');
