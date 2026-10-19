@@ -32,10 +32,12 @@ DropLab is a responsive, Drive-style file storage web app. Users can create an a
 3. Create a `.env` file in the project root:
 
    ```env
-   MONGO_URI=your_mongodb_connection_string
+   MONGO_URI=mongodb+srv://<username>:<url_encoded_password>@<cluster-host>/cloud-storage-db?retryWrites=true&w=majority
    JWT_SECRET=replace_with_a_long_random_secret
    PORT=5000
    ```
+
+   Set `MONGO_URI` to the MongoDB connection URI only. Keep the database name in the URI path (for example, `cloud-storage-db`) and do not append Atlas CLI options such as `--apiVersion`, `--username`, or `--password`. URL-encode special characters in the username or password.
 
 4. Start the app:
 

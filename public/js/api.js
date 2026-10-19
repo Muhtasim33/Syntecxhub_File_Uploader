@@ -65,3 +65,25 @@ export const downloadFile = async (endpoint, filename) => {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 };
+
+export const getFileBlob = async endpoint => {
+  const token = localStorage.getItem('token');
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`, { headers });
+  if (!response.ok) {
+    let message = 'Could not load the file';
+    try {
+      const result = await response.json();
+      message = result.message || message;
+    } catch (error) {
+      console.error('Could not read file error response:', error);
+    }
+    throw new Error(message);
+  }
+
+  return response.blob();
+};

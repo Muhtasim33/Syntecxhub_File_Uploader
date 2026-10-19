@@ -46,7 +46,15 @@ const renderFiles = (files, view, readOnly = false) => files.length
           ? `<button class="item-action restore-file-btn" type="button" data-id="${escapeHtml(file._id)}">Restore</button>
              <button class="item-action permanently-delete-btn" type="button" data-id="${escapeHtml(file._id)}" aria-label="Delete permanently">×</button>`
           : readOnly ? '' : `<button class="item-action item-star-btn" type="button" data-type="file" data-id="${escapeHtml(file._id)}" aria-label="Toggle starred">${file.isStarred ? '★' : '☆'}</button>
-             <button class="item-action item-trash-btn" type="button" data-type="file" data-id="${escapeHtml(file._id)}" aria-label="Move to trash">⋯</button>`}
+             <div class="file-menu">
+               <button class="item-action file-menu-toggle" type="button" aria-label="More options for ${escapeHtml(file.originalName)}" aria-haspopup="true" aria-expanded="false">⋯</button>
+               <div class="file-menu-options" role="menu" hidden>
+                 <button type="button" role="menuitem" data-file-action="rename">Rename</button>
+                 <button type="button" role="menuitem" data-file-action="preview">Preview</button>
+                 <button type="button" role="menuitem" data-file-action="download">Download</button>
+                 <button type="button" role="menuitem" data-file-action="trash">Move to trash</button>
+               </div>
+             </div>`}
       </article>
     `).join('')
   : `<p class="empty-state">${view === 'trash' ? 'Trash is empty.' : 'No files to show.'}</p>`;

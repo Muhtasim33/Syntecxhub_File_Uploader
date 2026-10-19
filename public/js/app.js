@@ -16,6 +16,8 @@ let files = [];
 let sharedItems = [];
 let searchTerm = '';
 let searchTimer;
+let fileMenuDismissHandler;
+let fileMenuEscapeHandler;
 
 const loadData = async () => {
   const view = currentView;
@@ -116,7 +118,65 @@ const openCreateFolder = () => {
   };
 };
 
+const openRenameFile = (fileId, fileName) => {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rename-file-title">
+      <h2 class="modal-header" id="rename-file-title">Rename file</h2>
+      <form id="rename-file-form">
+        <label class="folder-name-label" for="rename-file-name">File name</label>
+        <input id="rename-file-name" name="name" maxlength="255" required>
+        <p class="folder-form-error" id="rename-file-error" role="alert"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancel-rename-file">Cancel</button>
+          <button type="submit" class="btn-primary" id="submit-rename-file">Save</button>
+        </div>
+      </form>
+    </section>
+  `;
+  document.getElementById('modal-container').appendChild(overlay);
+  const nameInput = overlay.querySelector('#rename-file-name');
+  nameInput.value = fileName;
+  nameInput.focus();
+  nameInput.select();
+  overlay.querySelector('#cancel-rename-file').onclick = () => overlay.remove();
+  overlay.querySelector('#rename-file-form').onsubmit = async event => {
+    event.preventDefault();
+    const name = nameInput.value.trim();
+    if (!name) {
+      nameInput.setCustomValidity('Enter a file name.');
+      nameInput.reportValidity();
+      return;
+    }
+    nameInput.setCustomValidity('');
+    const submit = overlay.querySelector('#submit-rename-file');
+    const errorMessage = overlay.querySelector('#rename-file-error');
+    submit.disabled = true;
+    errorMessage.textContent = '';
+    try {
+      await apiCall(`/files/${encodeURIComponent(fileId)}`, 'PATCH', { name });
+    } catch (error) {
+      errorMessage.textContent = error.message || 'Could not rename file.';
+      submit.disabled = false;
+      return;
+    }
+
+    overlay.remove();
+    try {
+      await loadData();
+      render();
+    } catch (error) {
+      alert(`File renamed, but the view could not refresh: ${error.message}`);
+    }
+  };
+};
+
 const render = () => {
+  if (fileMenuDismissHandler) {
+    document.removeEventListener('click', fileMenuDismissHandler);
+    document.removeEventListener('keydown', fileMenuEscapeHandler);
+  }
   const appContainer = document.getElementById('app');
   if (!appContainer) return;
 
@@ -242,13 +302,99 @@ const render = () => {
         window.open(fileUrl, '_blank', 'noopener');
         return;
       }
-      renderPreviewModal(card.dataset.id, card.dataset.name, async action => {
+      renderPreviewModal(card.dataset.id, card.dataset.name, card.dataset.mimetype, async action => {
         if (action === 'opened') {
           await apiCall(`/files/${encodeURIComponent(card.dataset.id)}/activity`, 'PATCH');
+        } else {
+          await loadData();
+          render();
         }
-        await loadData();
-        render();
       });
+    };
+  });
+
+  document.querySelectorAll('.file-menu-toggle').forEach(toggle => {
+    toggle.onclick = event => {
+      event.stopPropagation();
+      const options = toggle.nextElementSibling;
+      const shouldOpen = options.hidden;
+      document.querySelectorAll('.file-menu-options').forEach(menu => {
+        menu.hidden = true;
+        menu.previousElementSibling.setAttribute('aria-expanded', 'false');
+      });
+      options.hidden = !shouldOpen;
+      toggle.setAttribute('aria-expanded', String(shouldOpen));
+    };
+  });
+
+  fileMenuDismissHandler = event => {
+    if (event.target.closest('.file-menu')) return;
+    document.querySelectorAll('.file-menu-options').forEach(menu => {
+      menu.hidden = true;
+      menu.previousElementSibling.setAttribute('aria-expanded', 'false');
+    });
+  };
+  fileMenuEscapeHandler = event => {
+    if (event.key !== 'Escape') return;
+    document.querySelectorAll('.file-menu-options').forEach(menu => {
+      menu.hidden = true;
+      menu.previousElementSibling.setAttribute('aria-expanded', 'false');
+    });
+  };
+  document.addEventListener('click', fileMenuDismissHandler);
+  document.addEventListener('keydown', fileMenuEscapeHandler);
+
+  document.querySelectorAll('[data-file-action]').forEach(button => {
+    button.onclick = async event => {
+      event.stopPropagation();
+      const card = button.closest('.file-card');
+      const fileId = card.dataset.id;
+      const fileName = card.dataset.name;
+      const mimeType = card.dataset.mimetype;
+      button.closest('.file-menu-options').hidden = true;
+      button.closest('.file-menu-options').previousElementSibling.setAttribute('aria-expanded', 'false');
+
+      switch (button.dataset.fileAction) {
+        case 'rename':
+          openRenameFile(fileId, fileName);
+          break;
+        case 'preview':
+          renderPreviewModal(fileId, fileName, mimeType, async action => {
+            if (action === 'opened') {
+              await apiCall(`/files/${encodeURIComponent(fileId)}/activity`, 'PATCH');
+            } else {
+              await loadData();
+              render();
+            }
+          });
+          break;
+        case 'download': {
+          try {
+            const { downloadFile } = await import('./api.js');
+            await downloadFile(`/files/download/${encodeURIComponent(fileId)}`, fileName);
+          } catch (error) {
+            alert(`Could not download file: ${error.message}`);
+          }
+          break;
+        }
+        case 'trash':
+          if (!confirm('Move this file to Trash?')) return;
+          try {
+            await apiCall(`/files/${encodeURIComponent(fileId)}`, 'DELETE');
+          } catch (error) {
+            alert(`Could not move file to Trash: ${error.message}`);
+            return;
+          }
+          try {
+            await loadData();
+            render();
+          } catch (error) {
+            alert(`File moved to Trash, but the view could not refresh: ${error.message}`);
+          }
+          break;
+        default:
+          break;
+      }
     };
   });
 

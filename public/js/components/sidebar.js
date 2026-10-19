@@ -1,5 +1,5 @@
 const navigation = [
-  ['home', 'Home / Suggested', 'home'],
+  ['home', 'Home', 'home'],
   ['drive', 'My Drive', 'hard_drive'],
   ['shared', 'Shared with me', 'people'],
   ['recent', 'Recent', 'schedule'],
@@ -23,7 +23,8 @@ export const renderSidebar = (currentView) => `
       <ul class="nav-links">
         ${navigation.map(([view, label, icon]) => `
           <li class="nav-item ${currentView === view ? 'active' : ''}" data-view="${view}" tabindex="0" role="button">
-            <span class="material-icons">${icon}</span> ${label}
+            <span class="material-icons">${icon}</span>
+            <span class="nav-label">${label}</span>
           </li>
         `).join('')}
       </ul>

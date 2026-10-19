@@ -8,7 +8,8 @@ const {
   toggleFileStar,
   deleteFile,
   restoreFile,
-  permanentlyDeleteFile
+  permanentlyDeleteFile,
+  renameFile
 } = require('../controllers/fileController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -38,6 +39,7 @@ router.route('/:id/restore')
   .patch(restoreFile);
 
 router.route('/:id')
+  .patch(renameFile)
   .delete(deleteFile);
 
 module.exports = router;

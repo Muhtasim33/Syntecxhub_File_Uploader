@@ -655,12 +655,90 @@ body {
 }
 
 .item-card {
+  position: relative;
   min-width: 0;
   min-height: 64px;
   gap: 10px;
   padding: 10px 12px;
   border-color: #e6eaf0;
   background: #fff;
+}
+
+.file-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.file-menu-toggle {
+  min-width: 32px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.file-menu-options {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 160px;
+  padding: 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  box-shadow: 0 4px 14px rgba(32, 33, 36, 0.18);
+}
+
+.file-menu-options[hidden] {
+  display: none;
+}
+
+.file-menu-options button {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-main);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.file-menu-options button:hover,
+.file-menu-options button:focus-visible {
+  background: #f1f3f4;
+}
+
+.file-preview-content {
+  display: flex;
+  min-height: 180px;
+  max-height: 60vh;
+  margin-top: 14px;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.file-preview-modal {
+  width: min(500px, calc(100vw - 32px));
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.file-preview-media {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+}
+
+.file-preview-frame {
+  width: 100%;
+  height: 60vh;
+  border: 0;
 }
 
 .item-card:hover {
@@ -951,6 +1029,11 @@ body {
   .nav-item .material-icons {
     flex: 0 0 auto;
     font-size: 20px;
+  }
+
+  .nav-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .main-content {

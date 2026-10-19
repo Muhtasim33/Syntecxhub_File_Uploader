@@ -206,6 +206,30 @@ const deleteFile = async (req, res, next) => {
   }
 };
 
+const renameFile = async (req, res, next) => {
+  try {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    if (!name || name.length > 255) {
+      res.status(400);
+      throw new Error('File name must be between 1 and 255 characters');
+    }
+
+    const file = await FileMeta.findOneAndUpdate(
+      { _id: req.params.id, ownerId: req.user._id, isTrashed: false },
+      { originalName: name },
+      { new: true, runValidators: true }
+    );
+    if (!file) {
+      res.status(404);
+      throw new Error('File not found');
+    }
+
+    res.json({ success: true, data: file });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateFileActivity = async (req, res, next) => {
   try {
     const file = await FileMeta.findOneAndUpdate(
@@ -306,6 +330,7 @@ module.exports = {
   downloadFile,
   updateFileActivity,
   toggleFileStar,
+  renameFile,
   deleteFile,
   restoreFile,
   permanentlyDeleteFile
