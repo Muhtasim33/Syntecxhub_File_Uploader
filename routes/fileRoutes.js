@@ -4,7 +4,11 @@ const {
   uploadFile,
   getFiles,
   downloadFile,
-  deleteFile
+  updateFileActivity,
+  toggleFileStar,
+  deleteFile,
+  restoreFile,
+  permanentlyDeleteFile
 } = require('../controllers/fileController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -20,6 +24,18 @@ router.route('/')
 
 router.route('/download/:id')
   .get(downloadFile);
+
+router.route('/:id/activity')
+  .patch(updateFileActivity);
+
+router.route('/:id/star')
+  .patch(toggleFileStar);
+
+router.route('/:id/permanent')
+  .delete(permanentlyDeleteFile);
+
+router.route('/:id/restore')
+  .patch(restoreFile);
 
 router.route('/:id')
   .delete(deleteFile);

@@ -47,6 +47,10 @@ const fileMetaSchema = new mongoose.Schema(
     trashedAt: {
       type: Date,
       default: null
+    },
+    lastAccessedAt: {
+      type: Date,
+      default: null
     }
   },
   {

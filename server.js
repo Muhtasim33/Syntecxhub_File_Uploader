@@ -10,7 +10,9 @@ const errorHandler = require('./middleware/errorHandler');
 dotenv.config();
 
 // Connect to MongoDB & GridFS
-connectDB();
+connectDB().then(() => {
+  require('./services/trashCleanup').startTrashCleanup();
+});
 
 const app = express();
 

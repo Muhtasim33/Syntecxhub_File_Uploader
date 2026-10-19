@@ -1,6 +1,25 @@
 const FileMeta = require('../models/FileMeta'); 
+const Folder = require('../models/Folder');
+const Share = require('../models/Share');
 const { getGfsBucket } = require('../config/db');
 const { Readable } = require('stream');
+
+const allowedMimeTypes = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/xml',
+  'text/xml',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+]);
+
+const isSupportedFile = ({ mimetype, originalname }) => (
+  allowedMimeTypes.has(mimetype) ||
+  mimetype.startsWith('image/') ||
+  mimetype.startsWith('video/') ||
+  /\.(pdf|docx?|xml|pptx?)$/i.test(originalname)
+);
 
 // @desc    Upload a file
 // @route   POST /api/files/upload
@@ -14,7 +33,33 @@ const uploadFile = async (req, res, next) => {
 
     const gfsBucket = getGfsBucket();
     const { originalname, mimetype, buffer, size } = req.file;
-    const { folderId } = req.body;
+    const folderId = req.body.folderId || null;
+
+    if (!isSupportedFile({ mimetype, originalname })) {
+      res.status(400);
+      throw new Error('Supported files are PDF, DOC, DOCX, XML, PPT, PPTX, images, and videos');
+    }
+
+    if (folderId) {
+      const folder = await Folder.findOne({
+        _id: folderId,
+        ownerId: req.user._id,
+        isTrashed: false
+      });
+      if (!folder) {
+        res.status(404);
+        throw new Error('Destination folder not found');
+      }
+    }
+
+    const [{ totalSize = 0 } = {}] = await FileMeta.aggregate([
+      { $match: { ownerId: req.user._id } },
+      { $group: { _id: null, totalSize: { $sum: '$size' } } }
+    ]);
+    if (totalSize + size > req.user.storageLimit) {
+      res.status(413);
+      throw new Error('This upload exceeds your available storage space');
+    }
 
     // Create a readable stream from the buffer
     const readableStream = new Readable();
@@ -42,7 +87,7 @@ const uploadFile = async (req, res, next) => {
         originalName: originalname,
         filename: filename,
         size: size,
-        mimeType: mimetype, // Fixed: changed 'mimetype' to 'mimeType'
+        mimeType: mimetype,
         gridfsId: uploadStream.id,
         ownerId: req.user._id,
         folderId: folderId || null
@@ -63,14 +108,31 @@ const uploadFile = async (req, res, next) => {
 // @access  Private
 const getFiles = async (req, res, next) => {
   try {
-    const { folderId } = req.query;
+    const { folderId, view, search } = req.query;
+    const isTrashed = view === 'trash' || req.query.trashed === 'true';
+
     const query = {
       ownerId: req.user._id,
-      isDeleted: false,
-      folderId: folderId ? folderId : null
+      isTrashed
     };
+    if (view === 'starred') {
+      query.isStarred = true;
+    } else if (view === 'recent') {
+      query.lastAccessedAt = { $ne: null };
+    } else if (!isTrashed && view !== 'home' && view !== 'all') {
+      query.folderId = folderId || null;
+    }
+    if (search) {
+      const escapedSearch = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.originalName = { $regex: escapedSearch, $options: 'i' };
+    }
 
-    const files = await FileMeta.find(query).sort({ createdAt: -1 });
+    const sort = view === 'recent'
+      ? { lastAccessedAt: -1 }
+      : view === 'home'
+        ? { lastAccessedAt: -1, isStarred: -1, updatedAt: -1 }
+        : { createdAt: -1 };
+    const files = await FileMeta.find(query).sort(sort);
 
     res.json({
       success: true,
@@ -89,7 +151,8 @@ const downloadFile = async (req, res, next) => {
   try {
     const fileMeta = await FileMeta.findOne({
       _id: req.params.id,
-      ownerId: req.user._id
+      ownerId: req.user._id,
+      isTrashed: false
     });
 
     if (!fileMeta) {
@@ -98,7 +161,8 @@ const downloadFile = async (req, res, next) => {
     }
 
     const gfsBucket = getGfsBucket();
-    res.set('Content-Type', fileMeta.mimeType); // Fixed: changed 'mimetype' to 'mimeType'
+    await FileMeta.updateOne({ _id: fileMeta._id }, { lastAccessedAt: new Date() });
+    res.set('Content-Type', fileMeta.mimeType);
     res.set('Content-Disposition', `attachment; filename="${fileMeta.originalName}"`);
 
     const downloadStream = gfsBucket.openDownloadStream(fileMeta.gridfsId);
@@ -120,7 +184,8 @@ const deleteFile = async (req, res, next) => {
   try {
     const fileMeta = await FileMeta.findOne({
       _id: req.params.id,
-      ownerId: req.user._id
+      ownerId: req.user._id,
+      isTrashed: false
     });
 
     if (!fileMeta) {
@@ -128,8 +193,8 @@ const deleteFile = async (req, res, next) => {
       throw new Error('File not found');
     }
 
-    fileMeta.isDeleted = true;
-    fileMeta.deletedAt = new Date();
+    fileMeta.isTrashed = true;
+    fileMeta.trashedAt = new Date();
     await fileMeta.save();
 
     res.json({
@@ -141,9 +206,107 @@ const deleteFile = async (req, res, next) => {
   }
 };
 
+const updateFileActivity = async (req, res, next) => {
+  try {
+    const file = await FileMeta.findOneAndUpdate(
+      { _id: req.params.id, ownerId: req.user._id, isTrashed: false },
+      { lastAccessedAt: new Date() },
+      { new: true }
+    );
+    if (!file) {
+      res.status(404);
+      throw new Error('File not found');
+    }
+    res.json({ success: true, data: file });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const toggleFileStar = async (req, res, next) => {
+  try {
+    const file = await FileMeta.findOne({
+      _id: req.params.id,
+      ownerId: req.user._id,
+      isTrashed: false
+    });
+    if (!file) {
+      res.status(404);
+      throw new Error('File not found');
+    }
+    file.isStarred = !file.isStarred;
+    await file.save();
+    res.json({ success: true, data: file });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Restore a file from trash
+// @route   PATCH /api/files/:id/restore
+// @access  Private
+const restoreFile = async (req, res, next) => {
+  try {
+    const fileMeta = await FileMeta.findOne({
+      _id: req.params.id,
+      ownerId: req.user._id,
+      isTrashed: true
+    });
+
+    if (!fileMeta) {
+      res.status(404);
+      throw new Error('Trashed file not found');
+    }
+    if (fileMeta.folderId) {
+      const parent = await Folder.findOne({ _id: fileMeta.folderId, ownerId: req.user._id });
+      if (parent?.isTrashed) {
+        res.status(400);
+        throw new Error('Restore the containing folder before restoring this file');
+      }
+    }
+
+    fileMeta.isTrashed = false;
+    fileMeta.trashedAt = null;
+    await fileMeta.save();
+
+    res.json({
+      success: true,
+      data: fileMeta
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const permanentlyDeleteFile = async (req, res, next) => {
+  try {
+    const file = await FileMeta.findOne({
+      _id: req.params.id,
+      ownerId: req.user._id,
+      isTrashed: true
+    });
+    if (!file) {
+      res.status(404);
+      throw new Error('Trashed file not found');
+    }
+    await getGfsBucket().delete(file.gridfsId);
+    await Promise.all([
+      file.deleteOne(),
+      Share.deleteMany({ fileId: file._id })
+    ]);
+    res.json({ success: true, data: {} });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   uploadFile,
   getFiles,
   downloadFile,
-  deleteFile
+  updateFileActivity,
+  toggleFileStar,
+  deleteFile,
+  restoreFile,
+  permanentlyDeleteFile
 };

@@ -3,7 +3,10 @@ const router = express.Router();
 const {
   createFolder,
   getFolders,
-  deleteFolder
+  trashFolder,
+  restoreFolder,
+  toggleFolderStar,
+  touchFolder
 } = require('../controllers/folderController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -15,6 +18,18 @@ router.route('/')
   .get(getFolders);
 
 router.route('/:id')
-  .delete(deleteFolder);
+  .delete(trashFolder);
+
+router.route('/:id/trash')
+  .patch(trashFolder);
+
+router.route('/:id/restore')
+  .patch(restoreFolder);
+
+router.route('/:id/star')
+  .patch(toggleFolderStar);
+
+router.route('/:id/activity')
+  .patch(touchFolder);
 
 module.exports = router;

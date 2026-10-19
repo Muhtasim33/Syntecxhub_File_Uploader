@@ -13,17 +13,32 @@ const generateToken = (id) => {
 // @access  Public
 const registerUser = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password } = req.body || {};
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
+    if (normalizedName.length < 2 || normalizedName.length > 50) {
       res.status(400);
+      throw new Error('Name must be between 2 and 50 characters');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedEmail) || normalizedEmail.length > 254) {
+      res.status(400);
+      throw new Error('Please provide a valid email address');
+    }
+    if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+      res.status(400);
+      throw new Error('Password must be between 8 and 128 characters');
+    }
+
+    const userExists = await User.findOne({ email: normalizedEmail });
+    if (userExists) {
+      res.status(409);
       throw new Error('User already exists with this email');
     }
 
     const user = await User.create({
-      name,
-      email,
+      name: normalizedName,
+      email: normalizedEmail,
       password
     });
 
@@ -44,6 +59,10 @@ const registerUser = async (req, res, next) => {
       throw new Error('Invalid user data');
     }
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.email) {
+      res.status(409);
+      error.message = 'User already exists with this email';
+    }
     next(error);
   }
 };
@@ -53,10 +72,20 @@ const registerUser = async (req, res, next) => {
 // @access  Public
 const loginUser = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedEmail) || normalizedEmail.length > 254) {
+      res.status(400);
+      throw new Error('Please provide a valid email address');
+    }
+    if (typeof password !== 'string' || password.length === 0) {
+      res.status(400);
+      throw new Error('Please provide a password');
+    }
 
     // Explicitly select password since schema has select: false
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
       res.json({

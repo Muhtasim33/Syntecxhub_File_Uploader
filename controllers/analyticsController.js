@@ -1,4 +1,5 @@
 const FileMeta = require('../models/FileMeta');
+const User = require('../models/User');
 
 // @desc    Get storage analytics for authenticated user
 // @route   GET /api/analytics/storage
@@ -7,18 +8,16 @@ const getStorageAnalytics = async (req, res, next) => {
   try {
     const userId = req.user._id;
 
-    // Aggregate total size and file count for non-deleted files
     const stats = await FileMeta.aggregate([
       {
         $match: {
-          user: userId,
-          isDeleted: false
+          ownerId: userId
         }
       },
       {
         $group: {
           _id: null,
-          totalSize: { $sum: '$fileSize' },
+          totalSize: { $sum: '$size' },
           totalFiles: { $sum: 1 }
         }
       }
@@ -28,15 +27,14 @@ const getStorageAnalytics = async (req, res, next) => {
     const mimeBreakdown = await FileMeta.aggregate([
       {
         $match: {
-          user: userId,
-          isDeleted: false
+          ownerId: userId
         }
       },
       {
         $group: {
           _id: '$mimeType',
           count: { $sum: 1 },
-          size: { $sum: '$fileSize' }
+          size: { $sum: '$size' }
         }
       },
       {
@@ -45,13 +43,22 @@ const getStorageAnalytics = async (req, res, next) => {
     ]);
 
     const storageData = stats.length > 0 ? stats[0] : { totalSize: 0, totalFiles: 0 };
+    const largestFiles = await FileMeta.find({
+      ownerId: userId
+    })
+      .sort({ size: -1 })
+      .limit(5)
+      .select('originalName size mimeType isTrashed');
+    const user = await User.findById(userId).select('storageLimit');
 
     res.json({
       success: true,
       data: {
         totalSize: storageData.totalSize,
         totalFiles: storageData.totalFiles,
-        mimeBreakdown
+        storageLimit: user.storageLimit,
+        mimeBreakdown,
+        largestFiles
       }
     });
   } catch (error) {
